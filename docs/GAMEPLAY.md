@@ -1,4 +1,4 @@
-# MONOLITH — gameplay overhaul (audit, rules, level intentions)
+﻿# MONOLITH — gameplay overhaul (audit, rules, level intentions)
 
 ## Audit (before the overhaul)
 
@@ -61,10 +61,10 @@ Every level has ≥ 3 solutions and ≥ 1 trap, all replayed through Rapier by `
 
 ## Tools
 
-* `npm run check` — types, tests (151), build.
+* `npm run check` — types, tests (160), build.
 * `EXPLORE=1 npx vitest run tests/explore.test.ts` — random explorer: counts winning builds per level, tipped vs flat (`EXPLORE_TRIALS`, `EXPLORE_ONLY`, `EXPLORE_FAMILIES`).
 * `EXPLORE=1 EXPLORE_MODE=short EXPLORE_MAX=2 EXPLORE_BUDGET=120 …` — exhaustive search of builds of ≤ n pieces around the goal: finds the short ways to win a designer would miss.
-* In the dev page: `__e2e.run()` (all solutions and traps), `__e2e.ui()` (79 checks: real clicks, drags, keys, touch, the whole tutorial), `__pump(s)` to advance a hidden pane.
+* In the dev page: `__e2e.run()` (all solutions and traps), `__e2e.ui()` (83 checks: real clicks, drags, keys, touch, the whole tutorial), `__pump(s)` to advance a hidden pane.
 
 ## Not verified
 

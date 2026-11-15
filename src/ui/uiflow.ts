@@ -3,7 +3,7 @@
 import { extents } from '../core/board';
 import { layOf, yawOf } from '../core/orient';
 import type { Game } from '../game/game';
-import { SAVE_KEY } from '../game/save';
+import { LEGACY_KEYS, SAVE_KEY } from '../game/save';
 import type { Ui } from './ui';
 
 export interface UiReport {
@@ -61,8 +61,9 @@ async function flow(game: Game, ui: Ui, failures: string[], lines: string[]): Pr
     target.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, button, pointerType, bubbles: true, cancelable: true, isPrimary: id === 1 }));
   };
 
-  const saved = localStorage.getItem(SAVE_KEY);
-  localStorage.removeItem(SAVE_KEY);
+  // a new save needs the earlier builds' keys out of the way too: load() falls back to them when the current key is empty
+  const stash = new Map<string, string | null>([SAVE_KEY, ...LEGACY_KEYS].map((k) => [k, localStorage.getItem(k)]));
+  for (const k of stash.keys()) localStorage.removeItem(k);
   game.progress.load();
   game.page = 'title';
   game.startLevel(0);
@@ -415,10 +416,35 @@ async function flow(game: Game, ui: Ui, failures: string[], lines: string[]): Pr
   await sleep(100);
   check(!game.progress.rec(0).done, 'the second click erases');
 
+  // export / import: the file the button hands out is read back by the import, and a wrong file changes nothing
+  game.progress.record(0, 1, true);
+  const aClick = HTMLAnchorElement.prototype.click;
+  let exported = '';
+  HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+    if (this.download) {
+      void fetch(this.href).then((r) => r.text()).then((t) => (exported = t));
+      return;
+    }
+    return aClick.call(this);
+  };
+  click('[data-act="export-save"]');
+  await until(() => exported !== '', 'the export file is made');
+  HTMLAnchorElement.prototype.click = aClick;
+  check(JSON.parse(exported).game === 'monolith' && JSON.parse(exported).data.levels[0].done === true, 'the export holds the progress');
+  await until(() => !!q('.note'), 'the export note shows');
+  game.eraseProgress();
+  check(!game.progress.rec(0).done, 'erased before the import');
+  check(game.importSave(exported) && game.progress.rec(0).done && game.progress.rec(0).shard, 'importing the exported file restores the progress');
+  const keep = JSON.stringify(game.progress.data);
+  check(!game.importSave('{"format":"tts-save","game":"other","data":{"version":1}}') && JSON.stringify(game.progress.data) === keep, 'a file of another game is refused and changes nothing');
+  await until(() => (q('.note') as HTMLElement | null)?.textContent?.includes('autre jeu') === true, 'the refusal is told');
+
   check(game.errors.length === 0, `no run-time errors (${game.errors.join('; ')})`);
 
-  if (saved === null) localStorage.removeItem(SAVE_KEY);
-  else localStorage.setItem(SAVE_KEY, saved);
+  for (const [k, v] of stash) {
+    if (v === null) localStorage.removeItem(k);
+    else localStorage.setItem(k, v);
+  }
   game.progress.load();
   game.page = 'title';
   game.startLevel(0);

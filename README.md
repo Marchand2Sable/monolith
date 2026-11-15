@@ -60,10 +60,10 @@ Seulement avec `npm run dev` (absents du build joueur) :
 
 | Élément | Vérification | Résultat |
 |---|---|---|
-| Règles de placement, victoire, données des niveaux, sauvegarde | `npm test` (Vitest) | 28 tests |
-| 14 niveaux : ≥ 3 solutions chacun gagnent, les pièges échouent, rien posé n'est pas une victoire | `npm test`, sous Node avec Rapier | 78 tests |
-| Les mêmes solutions dans la page, avec le vrai rendu et la vraie sauvegarde | `__e2e.run()` | 247 contrôles, 0 échec |
-| Interface : clics, touches, glisser-déposer, tactile, pincement, pause, réglages, effacement, victoire → suivant | `__e2e.ui()` | 43 contrôles, 0 échec |
+| Règles, orientations, sauvegarde (clé, migration, copie d'une sauvegarde illisible, export/import), 17 niveaux : ≥ 3 solutions chacun gagnent, les pièges échouent | `npm test` (Vitest, physique réelle sous Node) | 160 tests passent, 18 (explorateur) sautés sauf `EXPLORE=1` |
+| Les mêmes solutions dans la page, avec le vrai rendu et la vraie sauvegarde | `__e2e.run()` | 344 contrôles, 0 échec |
+| Interface : clics, touches, glisser-déposer, tactile, tutoriel, pause, réglages, export/import, effacement, victoire → suivant | `__e2e.ui()` | 83 contrôles, 0 échec |
+| Migration réelle dans le build de production : ancienne clé → clé du studio, ancienne entrée conservée ; sauvegarde corrompue mise de côté ; export, import, import refusé | `npm run preview` + navigateur (2026-11-15) | oui |
 | Build de production : démarre, console vide, outils de debug absents | `npm run preview` + navigateur | oui |
 | Écrans (titre, niveau, victoire, échec, réglages, récompenses), mise en page mobile 375×812 | Captures d'écran regardées | oui |
 
