@@ -1,0 +1,40 @@
+# Checks only: nothing is published from here.
+# Runs on every pull request, and on every push to a branch other than main (main has its own workflow: deploy-pages.yml).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # the project has no separate linter: the strict TypeScript compile (unused variables included) is the static check
+      - name: Types
+        run: npm run typecheck
+      - name: Tests (rules, save, every level replayed through the physics)
+        run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          BUILD_CHANNEL: ci
+      - name: Check the build (index.html, relative paths, no secret, no dev files, itch.io limits)
+        run: npm run verify:build
+      - name: Check the version (semver, changelog section)
+        run: npm run verify:version

@@ -1,0 +1,28 @@
+# dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# logs and local dev leftovers
+*.log
+.vite/
+
+# secrets and keys: never committed
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# release working files (made by the pipeline or by hand)
+release-notes.md
+*.zip
+butler-bin/
+
+# editor and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.claude/settings.local.json

@@ -1,0 +1,144 @@
+# OFFICIAL RELEASES. Only a version tag starts this workflow, never a plain push:
+#   v1.2.3          stable  -> GitHub Release + itch.io channel `html5`
+#   v1.2.3-beta.1   beta    -> GitHub pre-release + itch.io channel `html5-beta` (only when ITCH_BETA_ENABLED is "true")
+#
+# Chain: verify the tag against package.json and CHANGELOG.md -> build -> test -> verify the build -> pack the zip ->
+# GitHub Release -> itch.io (Butler). If a step fails, the steps after it do not run: nothing incomplete is published.
+#
+# Settings (Repository -> Settings -> Secrets and variables -> Actions), see docs in DEPLOYMENT.md:
+#   secret    BUTLER_API_KEY      the itch.io API key made for Butler (never in the repository, never in the chat)
+#   variable  ITCH_USER           itch.io account name (the part before the slash in `user/game`)
+#   variable  ITCH_GAME           the game's slug on itch.io
+#   variable  ITCH_BETA_ENABLED   "true" only when the beta channel is set up and meant to be pushed
+# Without ITCH_USER and ITCH_GAME the GitHub Release is still made and the itch.io job is skipped.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+permissions:
+  contents: read
+
+env:
+  BUTLER_VERSION: '15.24.0' # pinned: change it on purpose, after checking https://broth.itch.zone/butler/linux-amd64
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      channel: ${{ steps.v.outputs.channel }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the history is needed to know that a stable tag sits on main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Version, tag and changelog agree
+        id: v
+        run: node scripts/check-version.mjs --tag "$GITHUB_REF_NAME" --notes release-notes.md
+      - name: A stable version must come from main
+        if: steps.v.outputs.channel == 'stable'
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $GITHUB_REF_NAME is not on main. A stable release is cut from main only."
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build (production)
+        run: npm run build
+        env:
+          BUILD_CHANNEL: ${{ steps.v.outputs.channel }}
+      - name: Check the build
+        run: npm run verify:build
+      - name: Pack the HTML5 archive (index.html at the root of the zip)
+        run: |
+          ZIP="monolith-html5-${GITHUB_REF_NAME}.zip"
+          (cd dist && zip -r -X "../$ZIP" .)
+          # the archive is the artifact people get: check it, not just the folder it came from
+          unzip -Z1 "$ZIP" | grep -qx 'index.html' || { echo "::error::index.html is not at the root of $ZIP"; exit 1; }
+          unzip -tq "$ZIP"
+          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          if-no-files-found: error
+          path: |
+            ${{ env.ZIP }}
+            release-notes.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          if-no-files-found: error
+          path: dist
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+      - name: Create or update the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          FLAGS=()
+          [ "$PRERELEASE" = "true" ] && FLAGS+=(--prerelease)
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # a re-run for the same tag: same commit, same content; the assets are replaced, nothing new is created
+            gh release upload "$GITHUB_REF_NAME" monolith-html5-*.zip --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" monolith-html5-*.zip --verify-tag --title "MONOLITH $GITHUB_REF_NAME" --notes-file release-notes.md "${FLAGS[@]}"
+          fi
+
+  itch:
+    needs: [build, github-release]
+    # skipped (not failed) until the itch.io account and game are named; the beta channel only when it was switched on
+    if: ${{ vars.ITCH_USER != '' && vars.ITCH_GAME != '' && (needs.build.outputs.channel == 'stable' || vars.ITCH_BETA_ENABLED == 'true') }}
+    runs-on: ubuntu-latest
+    # create an Environment named "itch-release" and add yourself as a required reviewer: the push then waits for your click
+    environment: itch-release
+    concurrency:
+      group: itch-${{ needs.build.outputs.channel }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: dist
+      - name: The build is what was verified
+        run: test -f dist/index.html && ls -R dist | head -50
+      - name: Install Butler (pinned version)
+        run: |
+          curl -fsSL --retry 3 -o butler.zip "https://broth.itch.zone/butler/linux-amd64/${BUTLER_VERSION}/archive/default"
+          unzip -q butler.zip -d butler-bin
+          chmod +x butler-bin/butler
+          echo "$PWD/butler-bin" >> "$GITHUB_PATH"
+          ./butler-bin/butler -V
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          ITCH_TARGET: ${{ vars.ITCH_USER }}/${{ vars.ITCH_GAME }}
+          VERSION: ${{ needs.build.outputs.version }}
+          CHANNEL_KIND: ${{ needs.build.outputs.channel }}
+        run: |
+          if [ -z "$BUTLER_API_KEY" ]; then echo "::error::The secret BUTLER_API_KEY is not set."; exit 1; fi
+          CHANNEL=html5
+          [ "$CHANNEL_KIND" = "beta" ] && CHANNEL=html5-beta
+          butler push dist "$ITCH_TARGET:$CHANNEL" --userversion "$VERSION"
+          butler status "$ITCH_TARGET"
