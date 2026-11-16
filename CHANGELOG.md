@@ -2,9 +2,9 @@
 
 All notable changes to MONOLITH. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions: [Semantic Versioning](https://semver.org/) (see `VERSIONING.md`).
 
-## [0.1.0] - 2026-11-15
+## [0.1.0] - 2026-11-16
 
-First version prepared for publication. Nothing has been released yet: no tag exists until the release in `RELEASE_PROCESS.md` is made. Update the date above on that day.
+First published version. The itch.io page stays a draft until the online game has been checked in its iframe and on a phone.
 
 ### Added
 - Web port of the Unity game MONOLITH (Three.js for the scene, Rapier for the physics, TypeScript, Vite): a quiet physics puzzle, pieces placed on a board, gravity judges.
