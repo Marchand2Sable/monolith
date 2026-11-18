@@ -3,6 +3,7 @@
 import { extents } from '../core/board';
 import { layOf, yawOf } from '../core/orient';
 import type { Game } from '../game/game';
+import { TUTORIAL } from '../game/tutorial';
 import { LEGACY_KEYS, SAVE_KEY } from '../game/save';
 import type { Ui } from './ui';
 
@@ -333,19 +334,45 @@ async function flow(game: Game, ui: Ui, failures: string[], lines: string[]): Pr
   const stepId = (): string => game.tutorialStep?.id ?? '';
   check(stepId() === 'goal' && (q('[data-act="tuto-prev"]') as HTMLButtonElement).disabled, 'it starts with the objective, no way back');
   check(q('#tuto .spot')!.style.display === 'block' && (q('#tuto .catch') as HTMLElement).style.display === 'block', 'the objective is highlighted and the board waits behind the card');
-  for (const id of ['read', 'pieces', 'place']) {
-    check(!nextBtn().disabled, `"Suivant" is open on ${stepId()}`);
-    click('[data-act="tuto-next"]');
-    await until(() => stepId() === id, `the guide moves to ${id}`);
-    await settle();
-  }
+  check(TUTORIAL.length <= 5, `the guide is short (${TUTORIAL.length} steps)`);
+  // the card never hides the level: at every step the goal, the fixed piece and a beam stood on it are clear of the card, and on screen
+  const clearOfCard = async (what: string): Promise<void> => {
+    await sleep(900); // the view eases to its place
+    const c = q('#tuto .tcard')!.getBoundingClientRect();
+    const box = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number) => {
+      const pts: Array<{ x: number; y: number; z: number }> = [];
+      for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) pts.push({ x, y, z });
+      let r = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+      for (const p of pts) {
+        const s = game.stage.project(p);
+        r = { x0: Math.min(r.x0, s.x), y0: Math.min(r.y0, s.y), x1: Math.max(r.x1, s.x), y1: Math.max(r.y1, s.y) };
+      }
+      return r;
+    };
+    const z = game.level.goal!;
+    const parts = {
+      zone: box(z.cx - z.w / 2, z.cx + z.w / 2, z.height, z.height + 1.2, z.cz - z.d / 2, z.cz + z.d / 2),
+      standing: box(-0.5, 0.5, 2.05, 5.05, -0.5, 0.5),
+    };
+    for (const [name, r] of Object.entries(parts)) {
+      const hidden = !(r.x1 <= c.left || c.right <= r.x0 || r.y1 <= c.top || c.bottom <= r.y0);
+      const onScreen = r.x0 >= 0 && r.y0 >= 0 && r.x1 <= window.innerWidth && r.y1 <= window.innerHeight;
+      check(!hidden && onScreen, `${what}: the ${name} is on screen and not under the card`);
+    }
+  };
+  await clearOfCard('goal step');
+  check(!nextBtn().disabled, `"Suivant" is open on ${stepId()}`);
+  click('[data-act="tuto-next"]');
+  await until(() => stepId() === 'place', 'the guide moves to the placing step');
+  await settle();
   check(!(q('[data-act="tuto-prev"]') as HTMLButtonElement).disabled, `"Précédent" is open on step ${stepId()}`);
   click('[data-act="tuto-prev"]');
-  await until(() => stepId() === 'pieces', '"Précédent" goes back one step');
+  await until(() => stepId() === 'goal', '"Précédent" goes back one step');
   await settle();
   click('[data-act="tuto-next"]');
   await until(() => stepId() === 'place', 'and forward again');
   await settle();
+  await clearOfCard('placing step');
   check(nextBtn().disabled, 'the step that asks for a gesture keeps "Suivant" closed');
   check((q('#tuto .catch') as HTMLElement).style.display === 'none', 'and leaves the board free');
   check(!!q('#tuto .spot') && q('#tuto .spot')!.style.display === 'block', 'the beam in the tray is highlighted');
@@ -357,32 +384,20 @@ async function flow(game: Game, ui: Ui, failures: string[], lines: string[]): Pr
   ptr(canvas, 'pointermove', topP.x + 40, topP.y + 20, 1);
   ptr(canvas, 'pointermove', topP.x, topP.y, 1);
   ptr(canvas, 'pointerup', topP.x, topP.y, 1);
-  await until(() => !nextBtn().disabled, '"Suivant" opens once the beam is placed');
-  click('[data-act="tuto-next"]');
-  await until(() => stepId() === 'rotate', 'the guide asks for a rotation');
+  // a step that asked for a gesture moves on by itself shortly after it: no "Suivant" to press
+  await until(() => stepId() === 'stand', 'the guide moves on by itself once the beam is placed');
   await settle();
-  check(nextBtn().disabled, 'it waits for the turn');
-  key(' ');
-  await until(() => !nextBtn().disabled, 'ESPACE turns the beam and opens "Suivant"');
-  click('[data-act="tuto-next"]');
-  await until(() => stepId() === 'lay', 'the guide asks to stand the beam up');
-  await settle();
-  check(nextBtn().disabled, 'it waits for the beam to stand');
+  await clearOfCard('standing step');
+  check(nextBtn().disabled, 'the next step waits for the beam to stand');
   key('t');
-  await until(() => !nextBtn().disabled, 'T stands the beam on its end and opens "Suivant"');
-  click('[data-act="tuto-next"]');
-  await until(() => stepId() === 'rules', 'the rules step');
-  await settle();
-  click('[data-act="tuto-next"]');
-  await until(() => stepId() === 'validate', 'the validation step');
+  await until(() => stepId() === 'validate', 'T stands the beam on its end and the guide moves on by itself');
   await settle();
   check(nextBtn().disabled, 'it waits for a successful simulation');
   click('[data-act="sim"]');
   await until(() => game.state === 'done', 'the tutorial run ends', 20000);
   check(!!game.outcome?.won, 'the beam stood on the grey pillar wins LEVEL 0');
-  await until(() => !nextBtn().disabled, '"Suivant" opens after the win');
-  click('[data-act="tuto-next"]');
-  await until(() => stepId() === 'next' && !!q('#result.on'), 'the last step shows over the result card');
+  await until(() => stepId() === 'next' && !!q('#result.on'), 'the last step shows over the result card, by itself');
+  await clearOfCard('last step');
   check((q('#result') as HTMLElement).textContent!.includes('Premier niveau') && !(q('#result') as HTMLElement).textContent!.includes('Économe'), 'LEVEL 0 has its own card, no medals');
   click('[data-act="tuto-next"]');
   await until(() => !game.tutorial, 'Terminer closes the guide');

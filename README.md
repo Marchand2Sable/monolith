@@ -1,4 +1,4 @@
-# MONOLITH 3D — la version web
+﻿# MONOLITH 3D — la version web
 
 Un puzzle de physique calme, en 3D, dans le navigateur. Posez des pièces géométriques sur un plateau, atteignez la zone, puis lancez la simulation : la gravité juge. C'est le portage web du jeu Unity (`../MonolithUnity`) ; la version web 2D plus ancienne (`../monolith`) reste intacte. Two Tone — *less decoration, more contrast*.
 
@@ -62,7 +62,7 @@ Seulement avec `npm run dev` (absents du build joueur) :
 |---|---|---|
 | Règles, orientations, sauvegarde (clé, migration, copie d'une sauvegarde illisible, export/import), 17 niveaux : ≥ 3 solutions chacun gagnent, les pièges échouent | `npm test` (Vitest, physique réelle sous Node) | 160 tests passent, 18 (explorateur) sautés sauf `EXPLORE=1` |
 | Les mêmes solutions dans la page, avec le vrai rendu et la vraie sauvegarde | `__e2e.run()` | 344 contrôles, 0 échec |
-| Interface : clics, touches, glisser-déposer, tactile, tutoriel, pause, réglages, export/import, effacement, victoire → suivant | `__e2e.ui()` | 83 contrôles, 0 échec |
+| Interface : clics, touches, glisser-déposer, tactile, tutoriel, pause, réglages, export/import, effacement, victoire → suivant | `__e2e.ui()` | 89 contrôles, 0 échec |
 | Migration réelle dans le build de production : ancienne clé → clé du studio, ancienne entrée conservée ; sauvegarde corrompue mise de côté ; export, import, import refusé | `npm run preview` + navigateur (2026-11-15) | oui |
 | Build de production : démarre, console vide, outils de debug absents | `npm run preview` + navigateur | oui |
 | Écrans (titre, niveau, victoire, échec, réglages, récompenses), mise en page mobile 375×812 | Captures d'écran regardées | oui |

@@ -2,6 +2,22 @@
 
 All notable changes to MONOLITH. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions: [Semantic Versioning](https://semver.org/) (see `VERSIONING.md`).
 
+## [0.1.1] - 2026-11-18
+
+Playtest feedback on the tutorial.
+
+### Improved
+- The tutorial is shorter: 5 steps instead of 9 (objective, place, stand the beam, simulate, done).
+- A step that asks for a gesture now moves on by itself shortly after the gesture is made; "Suivant" is only needed on the explaining steps.
+- The tutorial speaks of buttons when the player uses a finger and of keys when they use a keyboard.
+- The tutorial dims the scene less, and the progress shows as five small bars.
+
+### Fixed
+- The tutorial card hid part of the level on phones and other small or low screens. The view now fits the goal and the build area into what the card leaves free, on portrait and landscape screens, and gives the whole screen back when the tutorial ends. On a low, wide screen the card becomes a narrow column at the left and the objectives step aside while it shows.
+
+### Technical
+- `OrbitCamera` can fit its scene into an inset of the screen; the dev UI flow checks at every tutorial step that the zone and the standing beam are on screen and not under the card.
+
 ## [0.1.0] - 2026-11-16
 
 First published version. The itch.io page stays a draft until the online game has been checked in its iframe and on a phone.

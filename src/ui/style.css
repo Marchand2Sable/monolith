@@ -261,12 +261,16 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; background: var
 #tuto { position: fixed; inset: 0; display: none; }
 #tuto.on { display: block; }
 #tuto .catch { position: absolute; inset: 0; display: none; background: transparent; pointer-events: auto; }
-#tuto .catch.dim { background: rgba(6, 6, 7, 0.62); }
-#tuto .spot { position: absolute; display: none; pointer-events: none; border: 1.5px solid var(--accent); box-shadow: 0 0 0 100vmax rgba(6, 6, 7, 0.58); animation: spot 1.8s ease-in-out infinite; }
+#tuto .catch.dim { background: rgba(6, 6, 7, 0.34); }
+#tuto .spot { position: absolute; display: none; pointer-events: none; border: 1.5px solid var(--accent); box-shadow: 0 0 0 100vmax rgba(6, 6, 7, 0.34); animation: spot 1.8s ease-in-out infinite; }
 @keyframes spot { 0%, 100% { border-color: var(--accent); } 50% { border-color: rgba(243, 242, 238, 0.35); } }
 #tuto .tcard { position: absolute; left: 0; right: 0; margin: 0 auto; bottom: calc(118px + var(--safe-b)); width: min(470px, calc(100% - 24px)); background: rgba(12, 12, 13, 0.96); border: 1px solid var(--line); padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 10px; animation: slide 0.3s cubic-bezier(.2,.7,.2,1) both; }
 #tuto .tcard.top { bottom: auto; top: calc(14px + var(--safe-t)); }
 #tuto .tstep { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 10px; letter-spacing: 0.26em; color: var(--grey-3); text-transform: uppercase; }
+#tuto .dots { display: flex; gap: 6px; align-items: center; }
+#tuto .dots i { display: block; width: 14px; height: 3px; background: var(--grey-2, #3a3a3d); }
+#tuto .dots i.was { background: var(--grey-4); }
+#tuto .dots i.now { background: var(--accent); }
 #tuto .tskip { background: none; border: 0; padding: 4px 0; font-size: 10px; letter-spacing: 0.18em; color: var(--grey-4); text-transform: uppercase; text-decoration: underline; text-underline-offset: 3px; }
 #tuto .tskip:hover { color: var(--paper); }
 #tuto .tcard h3 { margin: 0; font-weight: 500; font-size: 14px; letter-spacing: 0.22em; text-transform: uppercase; }
@@ -278,11 +282,22 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; background: var
 #tuto .tbtns .btn { padding: 11px 10px; font-size: 12px; letter-spacing: 0.22em; }
 .card.lesson { border-style: dashed; }
 @media (max-aspect-ratio: 1/1), (max-width: 640px) {
-  #tuto .tcard { bottom: calc(176px + var(--safe-b)); padding: 12px 14px 12px; gap: 8px; }
-  #tuto .tcard p { font-size: 12px; line-height: 1.45; }
+  #tuto .tcard { bottom: calc(176px + var(--safe-b)); padding: 10px 14px 12px; gap: 6px; }
+  #tuto .tcard h3 { font-size: 12.5px; letter-spacing: 0.2em; }
+  #tuto .tcard p { font-size: 12px; line-height: 1.4; }
+  #tuto .tdo { font-size: 12px; }
+  #tuto .tbtns { gap: 6px; }
+  #tuto .tbtns .btn { padding: 9px 8px; font-size: 11px; letter-spacing: 0.2em; }
   #tuto .tcard.top { bottom: auto; top: calc(14px + var(--safe-t)); }
 }
+/* a low, wide screen (a phone on its side): the card is a narrow column at the left under the pause button, between the top and the
+   buttons at the bottom; the objectives (which the card says anyway) step aside; the scene takes the room to the right of the card */
 @media (max-height: 520px) and (min-aspect-ratio: 1/1) {
-  #tuto .tcard { left: calc(14px + var(--safe-l)); right: auto; margin: 0; bottom: calc(14px + var(--safe-b)); width: min(380px, 52vw); }
+  #tuto .tcard { left: calc(14px + var(--safe-l)); right: auto; margin: 0; top: calc(58px + var(--safe-t)); bottom: auto; width: min(300px, 42vw); max-height: calc(100% - 120px - var(--safe-t)); overflow: auto; padding: 8px 12px 10px; gap: 5px; }
+  #tuto .tcard h3 { font-size: 12px; letter-spacing: 0.18em; }
+  #tuto .tcard p { font-size: 11.5px; line-height: 1.35; }
+  #tuto .tdo { font-size: 11.5px; }
+  #tuto .tbtns .btn { padding: 8px 6px; font-size: 10.5px; letter-spacing: 0.16em; }
   #tuto .tcard.top { top: calc(14px + var(--safe-t)); bottom: auto; left: auto; right: calc(14px + var(--safe-r)); }
+  #ui.tutoring .objectives { display: none; }
 }

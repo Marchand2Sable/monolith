@@ -31,7 +31,9 @@ Winning is judged by the physics only (height of the pieces that count over the 
 
 ## LEVEL 0 (tutorial) — `src/game/tutorial.ts`
 
-Nine steps, "Suivant" is the way forward; a step that asks for a gesture keeps it closed until the gesture is made (place the beam, Space, T, simulate). Highlights follow the 3D scene or a UI element (`Ui.targetRect`), the rest of the screen is dimmed, explaining steps freeze the board. "Précédent", "Passer le tutoriel", replay from the title and from the level list. It earns no medal and takes no part in the campaign.
+Five steps (goal, place, stand the beam, simulate, done). A step that asks for a gesture (place the beam, stand it with T or the button, simulate) moves on by itself 0.9 s after the gesture; "Suivant" stays closed until then and opens it at once. The text follows the input: buttons for a finger, keys for a keyboard (`Game.usesTouch`). Highlights follow the 3D scene or a UI element (`Ui.targetRect`), the dimming is light (0.34), explaining steps freeze the board. "Précédent", "Passer le tutoriel", replay from the title and from the level list. It earns no medal and takes no part in the campaign.
+
+**The card never hides the level.** While a step is shown, the interface hands the camera the room the card leaves (`OrbitCamera.inset`) and what has to stay in view (`focus`: the goal, the fixed pieces and 1.6 around them). The camera measures where that box falls, slides the view (and shrinks it only if it does not fit) so the box sits in the free part, eased. Portrait: scene above the card. Landscape phone (low and wide): the card is a column at the left under the pause button, the objectives step aside, the scene takes the middle and right. The dev flow (`__e2e.ui()`) checks at each step that the zone and a beam stood on the pillar are on screen and not under the card; run at 1100×720, 390×800, 360×640 and 740×360.
 
 ## Levels (17 + sandbox + LEVEL 0)
 
@@ -64,7 +66,7 @@ Every level has ≥ 3 solutions and ≥ 1 trap, all replayed through Rapier by `
 * `npm run check` — types, tests (160), build.
 * `EXPLORE=1 npx vitest run tests/explore.test.ts` — random explorer: counts winning builds per level, tipped vs flat (`EXPLORE_TRIALS`, `EXPLORE_ONLY`, `EXPLORE_FAMILIES`).
 * `EXPLORE=1 EXPLORE_MODE=short EXPLORE_MAX=2 EXPLORE_BUDGET=120 …` — exhaustive search of builds of ≤ n pieces around the goal: finds the short ways to win a designer would miss.
-* In the dev page: `__e2e.run()` (all solutions and traps), `__e2e.ui()` (83 checks: real clicks, drags, keys, touch, the whole tutorial), `__pump(s)` to advance a hidden pane.
+* In the dev page: `__e2e.run()` (all solutions and traps), `__e2e.ui()` (89 checks: real clicks, drags, keys, touch, the whole tutorial), `__pump(s)` to advance a hidden pane.
 
 ## Not verified
 

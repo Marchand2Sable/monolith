@@ -1,6 +1,6 @@
 {
   "name": "monolith-3d",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MONOLITH 3D - a quiet physics puzzle for the browser (web port of the Unity game)",
   "type": "module",
   "private": true,

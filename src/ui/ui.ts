@@ -4,8 +4,9 @@ import { nameOf, type Kind } from '../core/kinds';
 import { campaignNumber, type Game } from '../game/game';
 import { ACHIEVEMENTS, THEMES } from '../game/save';
 import { renderIcons } from '../render/pieces';
-import { TUTORIAL } from '../game/tutorial';
+import { TUTORIAL, say } from '../game/tutorial';
 import { buildLabel } from '../buildinfo';
+import { Box3, Vector3 } from 'three';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const num = (n: number): string => (Math.round(n * 10) / 10).toString();
@@ -386,6 +387,7 @@ export class Ui {
 
   // ------------------------------------------------------------------ the tutorial (LEVEL 0)
   private spotKey = '';
+  private focusLevel = -1;
 
   /** The highlighted rectangle of a step (in screen pixels), or null when it has nothing to show. */
   private targetRect(target: string): { x: number; y: number; w: number; h: number } | null {
@@ -431,26 +433,61 @@ export class Ui {
     const step = g.paused ? null : g.tutorialStep;
     const tuto = this.el.tuto;
     tuto.classList.toggle('on', !!step);
+    this.root.classList.toggle('tutoring', !!step);
     if (!step) {
       this.keys.set('tutorial', '');
+      g.stage.orbit.inset = null; // nothing covers the scene any more: it takes the whole screen back
+      this.focusLevel = -1;
       return;
     }
     const ready = g.tutorialReady;
     const waiting = step.waiting ? step.waiting(g) : null;
     const index = g.tutorial!.step;
-    const key = [index, ready, waiting ?? '', g.state, g.outcome?.won ?? ''].join('|');
+    const key = [index, ready, waiting ?? '', g.state, g.outcome?.won ?? '', g.usesTouch].join('|');
     this.section('tutorial', key, () => {
       const total = TUTORIAL.length;
-      const text = esc(step.text).replace(/\{([^}]+)\}/g, '<kbd>$1</kbd>');
-      const action = waiting ?? step.action;
+      const text = esc(say(step.text, g)).replace(/\{([^}]+)\}/g, '<kbd>$1</kbd>');
+      const act = step.action ? say(step.action, g) : undefined;
+      const action = waiting ?? act;
+      const dots = Array.from({ length: total }, (_, k) => `<i class="${k < index ? 'was' : k === index ? 'now' : ''}"></i>`).join('');
       const isLast = index >= total - 1;
       this.el.tcard.className = 'tcard ui-block' + (step.id === 'next' ? ' top' : '');
-      this.el.tcard.innerHTML = `<div class="tstep"><span>LEVEL 0 · ${index + 1} / ${total}</span><button class="tskip" data-act="tuto-skip">${isLast ? '' : 'Passer le tutoriel'}</button></div>
+      this.el.tcard.innerHTML = `<div class="tstep"><span class="dots" aria-label="Étape ${index + 1} sur ${total}">${dots}</span><button class="tskip" data-act="tuto-skip">${isLast ? '' : 'Passer le tutoriel'}</button></div>
         <h3>${esc(step.title)}</h3><p>${text}</p>
         ${action ? `<div class="tdo${ready ? ' ok' : ''}">${ready ? '✓ Bien joué' : '▸ ' + esc(action).replace(/\{([^}]+)\}/g, '<kbd>$1</kbd>')}</div>` : ''}
         <div class="tbtns"><button class="btn ui-block" data-act="tuto-prev"${index === 0 ? ' disabled' : ''}>Précédent</button>
           <button class="btn ui-block primary" data-act="tuto-next"${ready ? '' : ' disabled'}>${esc(step.next ?? 'Suivant')}</button></div>`;
     });
+    // the card never hides the level: the scene is fitted into what the card leaves free (shrunk if it must be, slid, eased)
+    const cr = this.el.tcard.getBoundingClientRect();
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    if (this.focusLevel !== g.levelIndex) {
+      // what the guide is about: the goal, the fixed pieces and the room around them to build in (not the board's far corners)
+      this.focusLevel = g.levelIndex;
+      const goal = g.level.goal;
+      const box = new Box3();
+      if (goal) {
+        box.expandByPoint(new Vector3(goal.cx - goal.w / 2, 0, goal.cz - goal.d / 2));
+        box.expandByPoint(new Vector3(goal.cx + goal.w / 2, goal.height + 1.5, goal.cz + goal.d / 2));
+      }
+      g.level.obstacles.forEach((_, i) => g.worldPartsOfObstacle(i).forEach((p) => box.expandByPoint(new Vector3(p.min.x, p.min.y, p.min.z)).expandByPoint(new Vector3(p.max.x, p.max.y, p.max.z))));
+      g.stage.orbit.focus = box.isEmpty() ? null : box.expandByVector(new Vector3(1.6, 0, 1.6));
+    }
+    if (cr.width > 0 && cr.height > 0) {
+      if (cr.width < W * 0.6 && (cr.left < W * 0.12 || cr.right > W * 0.88)) {
+        // a card in a corner (a low, wide screen): the scene takes the other side, clear of the column of pieces at the right edge
+        const tray = this.root.querySelector('.tray')?.getBoundingClientRect();
+        const trayRight = tray && tray.width > 0 && tray.left > W / 2 ? W - tray.left : 0;
+        g.stage.orbit.inset =
+          cr.left > W / 2 ? { top: 0, bottom: 90, left: 0, right: W - cr.left } : { top: 0, bottom: 90, left: cr.right, right: trayRight };
+      } else if (!this.el.tcard.classList.contains('top')) {
+        g.stage.orbit.inset = { top: 56, bottom: H - cr.top, left: 0, right: 0 };
+      } else {
+        const tray = this.root.querySelector('.tray')?.getBoundingClientRect();
+        g.stage.orbit.inset = { top: cr.bottom, bottom: tray && tray.top > H / 2 ? H - tray.top : 150, left: 0, right: 0 };
+      }
+    }
     // the spotlight follows its target every frame (the 3D ones move with the view); the catcher keeps the board quiet while a step only explains
     const rect = this.targetRect(step.target);
     const pad = 8;

@@ -190,11 +190,26 @@ export class Game {
     this.pauseSettings = false;
     this.loadLevel(this.levelIndex);
     this.introTime = 99;
-    if (this.level.tutorial) this.tutorial = { step: 0 };
+    if (this.level.tutorial) {
+      this.tutorial = { step: 0 };
+      this.enterStep();
+    }
     this.touch();
   }
 
   // ------------------------------------------------------------------ the tutorial (LEVEL 0)
+  /** True while the player plays with a finger (so the guide speaks of buttons, not keys). The first guess is the device; the last input wins. */
+  usesTouch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+  /** A step that asks for a gesture ends by itself a moment after it is made, unless the gesture was already made when the step began. */
+  private tutorialAuto = false;
+  private tutorialReadyTime = 0;
+
+  private enterStep(): void {
+    const s = this.tutorialStep;
+    this.tutorialAuto = !!s && !!s.until && !stepDone(this, s);
+    this.tutorialReadyTime = 0;
+  }
+
   get tutorialIndex(): number {
     return this.levels.findIndex((l) => l.tutorial);
   }
@@ -204,6 +219,7 @@ export class Game {
     this.startLevel(this.tutorialIndex);
     this.introTime = 99;
     this.tutorial = { step: 0 };
+    this.enterStep();
     this.touch();
   }
 
@@ -228,6 +244,7 @@ export class Game {
     }
     t.step++;
     // a step that asks for a gesture already made is simply shown as done; one after a finished run waits for the result card
+    this.enterStep();
     this.touch();
   }
 
@@ -236,6 +253,7 @@ export class Game {
     if (!t || t.step === 0) return;
     this.sfx('click', 0.6);
     t.step--;
+    this.enterStep();
     this.touch();
   }
 
@@ -396,6 +414,7 @@ export class Game {
 
   // ------------------------------------------------------------------ drag and drop
   startDrag(kind: Kind, rot: number, from: Piece | null, x: number, y: number, touch: boolean): void {
+    this.usesTouch = touch;
     const before = this.board.snapshot(); // taken before the piece leaves the board
     this.drag = { kind, rot, from, before, valid: false, pos: v3(0, 0, 0), lastX: x, lastY: y, touch };
     if (from) {
@@ -745,6 +764,11 @@ export class Game {
       this.touch();
     }
     if (!this.paused) this.stepPhysics(dt);
+    // the guide moves on by itself shortly after a gesture it asked for (the last step waits for "Terminer")
+    if (this.tutorial && this.tutorialAuto && !this.paused && !this.busy && this.tutorial.step < TUTORIAL.length - 1 && this.tutorialReady) {
+      this.tutorialReadyTime += dt;
+      if (this.tutorialReadyTime >= 0.9) this.tutorialNext();
+    } else this.tutorialReadyTime = 0;
     // the zone brightens while the goal is met
     if (this.level.goal && this.state !== 'menu') this.stage.setZoneMet(this.liveHeight() >= this.level.goal.height - REACH);
     else this.stage.setZoneMet(false);
@@ -760,6 +784,7 @@ export class Game {
 
   pointerDown(id: number, x: number, y: number, button: number, touch: boolean): void {
     this.audio.unlock();
+    this.usesTouch = touch;
     if (this.paused || this.busy) return;
     this.pointers.set(id, { x, y });
     if (this.pointers.size === 2) {
@@ -830,6 +855,7 @@ export class Game {
   /** Returns true when the key was used. */
   key(e: { key: string; code: string; ctrlKey: boolean; metaKey: boolean; shiftKey?: boolean }): boolean {
     this.audio.unlock();
+    this.usesTouch = false;
     const ctrl = e.ctrlKey || e.metaKey;
     if ((this.paused && e.key !== 'Escape') || this.busy) return false;
     if (this.tutorialBlocks && e.key !== 'Escape') return false; // an explaining step: only Suivant moves on
